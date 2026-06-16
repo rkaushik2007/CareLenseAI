@@ -1,0 +1,99 @@
+bundle:
+  name: carelenseai
+
+workspace:
+  host: https://adb-3141834805281315.15.azuredatabricks.net
+  root_path: /Workspace/Users/rajaniesh@rajanieshkaushikk.com/.bundle/${bundle.name}/${bundle.target}
+
+variables:
+  warehouse_id:
+    default: "c0c32c95246fd6a9"
+  app_source_path:
+    default: /Workspace/Users/rajaniesh@rajanieshkaushikk.com/apps/carelenseai
+  catalog:
+    default: main
+
+resources:
+  schemas:
+    carelense_gold:
+      name: carelense_gold
+      catalog_name: ${var.catalog}
+      comment: CareLenseAI Gold serving tables — geo capability scores and citations
+
+    carelense_silver:
+      name: carelense_silver
+      catalog_name: ${var.catalog}
+      comment: CareLenseAI Silver DLT tables — facility evidence and geo crosswalk
+
+  pipelines:
+    carelense_medallion:
+      name: carelense_medallion_pipeline
+      catalog: ${var.catalog}
+      target: carelense_silver
+      serverless: true
+      libraries:
+        - file:
+            path: ./pipeline/bronze.py
+        - file:
+            path: ./pipeline/silver.py
+      configuration:
+        spark.sql.shuffle.partitions: "8"
+
+  jobs:
+    carelense_gold_job:
+      name: "[CareLenseAI] Gold Materialization"
+      tasks:
+        - task_key: materialize_gold
+          notebook_task:
+            notebook_path: ${var.app_source_path}/notebooks/jobs/01_materialize_gold.py
+            source: WORKSPACE
+          environment_key: default
+
+        - task_key: grant_permissions
+          depends_on:
+            - task_key: materialize_gold
+          notebook_task:
+            notebook_path: ${var.app_source_path}/notebooks/jobs/03_grant_permissions.py
+            source: WORKSPACE
+          environment_key: default
+
+      environments:
+        - environment_key: default
+          spec:
+            environment_version: "2"
+
+    carelense_data_readiness:
+      name: "[CareLenseAI] Data Readiness Report"
+      tasks:
+        - task_key: readiness
+          notebook_task:
+            notebook_path: ${var.app_source_path}/notebooks/jobs/04_data_readiness.py
+            source: WORKSPACE
+          environment_key: default
+      environments:
+        - environment_key: default
+          spec:
+            environment_version: "2"
+
+  apps:
+    carelenseai:
+      name: carelenseai
+      description: CareLenseAI Medical Desert Planner — Track 2
+      source_code_path: ${var.app_source_path}
+      resources:
+        - name: sql-warehouse
+          sql_warehouse:
+            id: ${var.warehouse_id}
+            permission: CAN_USE
+
+targets:
+  default:
+    mode: development
+    default: true
+    workspace:
+      host: https://adb-3141834805281315.15.azuredatabricks.net
+
+  prod:
+    mode: production
+    workspace:
+      host: https://adb-3141834805281315.15.azuredatabricks.net

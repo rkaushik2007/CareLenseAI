@@ -1,0 +1,25 @@
+{
+  "name": "carelense_medallion_pipeline",
+  "catalog": "main",
+  "target": "carelense_silver",
+  "channel": "CURRENT",
+  "photon": true,
+  "serverless": true,
+  "libraries": [
+    {
+      "file": {
+        "path": "/Workspace/Users/rajaniesh@rajanieshkaushikk.com/apps/carelenseai/pipeline/bronze.py"
+      }
+    },
+    {
+      "file": {
+        "path": "/Workspace/Users/rajaniesh@rajanieshkaushikk.com/apps/carelenseai/pipeline/silver.py"
+      }
+    }
+  ],
+  "configuration": {
+    "spark.sql.shuffle.partitions": "8"
+  },
+  "continuous": false,
+  "development": false
+}

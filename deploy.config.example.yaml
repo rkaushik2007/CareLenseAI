@@ -1,0 +1,31 @@
+# CareLenseAI workspace deployment config
+# Copy to deploy.config.yaml and fill in your values.
+# NEVER commit deploy.config.yaml — it is listed in .gitignore.
+
+# Databricks workspace URL (no trailing slash)
+# Hackathon free tier example: https://dbc-d7535c0c-012b.cloud.databricks.com
+# Premium Azure example:        https://adb-3141834805281315.15.azuredatabricks.net
+databricks_host: https://YOUR-WORKSPACE.cloud.databricks.com
+
+# Personal access token — reference an env var, never paste a literal token here
+databricks_token: ${DATABRICKS_TOKEN}
+
+# SQL warehouse ID (Compute → SQL Warehouses → copy the ID)
+warehouse_id: your-warehouse-id
+
+# Unity Catalog for gold/silver schemas (use "main" on hackathon workspaces)
+catalog: main
+gold_schema: carelense_gold
+
+# Workspace folder where app source is uploaded
+workspace_base: /Workspace/Users/you@email.com/apps/carelenseai
+
+# Databricks App resource name
+app_name: carelenseai
+
+# Optional: Genie space ID for /api/ask (set after creating a Genie space)
+# genie_space_id: ""
+
+# Optional: OpenAI key for agent features — env var reference only
+# Set the real key in your shell or Databricks App secrets UI
+# openai_api_key: ${OPENAI_API_KEY}

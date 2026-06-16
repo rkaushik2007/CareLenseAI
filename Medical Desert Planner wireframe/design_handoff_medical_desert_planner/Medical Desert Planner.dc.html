@@ -1,0 +1,953 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Hanken+Grotesk:wght@400;500;600;700;800&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/d3@7"></script>
+<script src="https://cdn.jsdelivr.net/npm/topojson-client@3"></script>
+<style>
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; }
+  body { font-family: 'Hanken Grotesk', system-ui, sans-serif; background: var(--bg); color: var(--ink); -webkit-font-smoothing: antialiased; }
+  ::-webkit-scrollbar { width: 9px; height: 9px; }
+  ::-webkit-scrollbar-thumb { background: var(--track-off); border-radius: 99px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  @keyframes mdpfade { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: none; } }
+  .mdp-mono { font-family: 'IBM Plex Mono', monospace; }
+  :root {
+    --bg:#eef0f3; --panel:#ffffff; --panel-2:#f4f5f8; --panel-3:#f8f9fb;
+    --border:#e2e4ea; --border-2:#e6e8ee; --border-3:#e9ebf0;
+    --ink:#1b1d26; --ink-2:#2d313d; --muted:#565c6b; --faint:#5f6675;
+    --accent:#4f46e5; --accent-soft:#eef0ff; --accent-border:#e0e2fb; --accent-ink:#312e81;
+    --solid:#1b1d26; --solid-ink:#ffffff;
+    --q-desert:#fbeeec; --q-blind:#fcf6ea; --q-served:#eef7f1; --q-unknown:#f5f6f8; --q-grid:#dfe2e8;
+    --legend-bg:rgba(255,255,255,.92); --track-off:#cdd0d8;
+    --callout-bg:#fbf7f2; --callout-border:#f0e6d8; --callout-ink:#8a7a5e; --callout-strong:#7a6320;
+    --warn-bg:#fdf3e6; --warn-border:#f3e2cb; --warn-ink:#b06a1f;
+    color-scheme: light;
+  }
+  :root[data-theme="dark"] {
+    --bg:#0c0e14; --panel:#1d222e; --panel-2:#151a23; --panel-3:#191e28;
+    --border:#2b3140; --border-2:#2b3140; --border-3:#262c39;
+    --ink:#eef1f6; --ink-2:#ccd2dd; --muted:#9aa1b3; --faint:#8a92a6;
+    --accent:#8a90ff; --accent-soft:#222a4d; --accent-border:#36417c; --accent-ink:#c8ccff;
+    --solid:#e9ecf2; --solid-ink:#171a22;
+    --q-desert:#2a1b19; --q-blind:#272117; --q-served:#15241c; --q-unknown:#1a1f29; --q-grid:#2c3340;
+    --legend-bg:rgba(20,23,31,.92); --track-off:#3a4150;
+    --callout-bg:#1d2433; --callout-border:#2c3852; --callout-ink:#a9b6cc; --callout-strong:#dfe7f4;
+    --warn-bg:#2a2114; --warn-border:#473720; --warn-ink:#e0a85a;
+    color-scheme: dark;
+  }
+  body { transition: background .25s ease, color .25s ease; }
+</style>
+</helmet>
+
+<div style="display:flex; flex-direction:column; height:100vh; width:100vw; min-width:1340px; overflow:hidden; background:var(--bg);">
+
+  <!-- ===== TOP BAR ===== -->
+  <header style="display:flex; align-items:center; gap:18px; height:66px; min-height:66px; padding:0 22px; background:var(--panel); border-bottom:1px solid var(--border);">
+    <div style="display:flex; align-items:center; gap:12px;">
+      <svg viewBox="0 0 72 84" style="height:38px; width:auto; display:block; flex-shrink:0;" fill="none" aria-label="CareLens AI">
+        <defs>
+          <linearGradient id="clpin" x1="14" y1="6" x2="58" y2="74" gradientUnits="userSpaceOnUse">
+            <stop offset="0" stop-color="#46ccf5"></stop><stop offset="0.55" stop-color="#2e86e4"></stop><stop offset="1" stop-color="#2256d6"></stop>
+          </linearGradient>
+          <linearGradient id="clpup" x1="26" y1="21" x2="46" y2="42" gradientUnits="userSpaceOnUse">
+            <stop offset="0" stop-color="#23b9cb"></stop><stop offset="1" stop-color="#2a7de1"></stop>
+          </linearGradient>
+        </defs>
+        <path d="M36 4C19 4 6 17 6 33C6 45 16 56 30 67C32.5 69 34 71.5 36 77C38 71.5 39.5 69 42 67C56 56 66 45 66 33C66 17 53 4 36 4Z" fill="url(#clpin)"></path>
+        <g stroke="#7ad8ff" stroke-width="1.6" stroke-linecap="round">
+          <path d="M55 20 L61.5 13.5"></path><path d="M57 33 L65 33"></path><path d="M17 47 L9.5 54"></path>
+        </g>
+        <g fill="#7ad8ff"><circle cx="62.6" cy="12.4" r="2.6"></circle><circle cx="66.4" cy="33" r="2.6"></circle><circle cx="8.4" cy="55" r="2.6"></circle></g>
+        <path d="M13 31 Q36 14 59 31 Q36 48 13 31 Z" fill="#ffffff"></path>
+        <path d="M20 31 Q36 19.5 52 31 Q36 42.5 20 31 Z" fill="url(#clpup)"></path>
+        <path d="M24 31 H29.5 L32.4 24 L35.6 39 L38.6 27.5 L41 31 H48" stroke="#ffffff" stroke-width="2.4" stroke-linejoin="round" stroke-linecap="round"></path>
+        <circle cx="30.5" cy="26.5" r="1.5" fill="#ffffff" opacity="0.9"></circle>
+      </svg>
+      <div style="line-height:1.05;">
+        <div style="font-size:18px; font-weight:800; letter-spacing:-0.02em;"><span style="color:var(--ink);">CareLens</span><span style="color:#19b1cf;"> AI</span></div>
+        <div class="mdp-mono" style="font-size:8.5px; font-weight:500; color:var(--faint); letter-spacing:0.07em; margin-top:2px;">MEDICAL DESERT PLANNER · TRACK 2</div>
+      </div>
+    </div>
+
+    <div style="display:flex; align-items:center; gap:8px; height:34px; padding:0 12px; background:var(--panel-2); border:1px solid var(--border-2); border-radius:9px; min-width:300px; flex:0 1 360px;">
+      <div style="width:13px; height:13px; border:1.8px solid var(--faint); border-radius:50%; position:relative;"></div>
+      <input value="{{ query }}" onChange="{{ setQuery }}" placeholder="Search a state, district or PIN…" style="border:none; outline:none; background:transparent; font-family:'Hanken Grotesk',sans-serif; font-size:13px; color:var(--ink); width:100%;" />
+    </div>
+
+    <div style="flex:1;"></div>
+
+    <div style="display:flex; gap:3px; padding:3px; background:var(--panel-2); border:1px solid var(--border-2); border-radius:9px;">
+      <button onClick="{{ setLight }}" title="Light theme" style="{{ lightBtnStyle }}">
+        <span style="width:13px; height:13px; border-radius:50%; border:2px solid currentColor; display:block;"></span>
+      </button>
+      <button onClick="{{ setDark }}" title="Dark theme" style="{{ darkBtnStyle }}">
+        <span style="width:13px; height:13px; border-radius:50%; box-shadow:inset -4px -3px 0 0 currentColor; display:block;"></span>
+      </button>
+    </div>
+
+    <button onClick="{{ openScenarios }}" style="display:flex; align-items:center; gap:8px; height:34px; padding:0 13px; background:var(--panel-2); border:1px solid var(--border-2); border-radius:9px; cursor:pointer; font-family:'Hanken Grotesk',sans-serif;">
+      <div style="width:6px; height:6px; border-radius:50%; background:var(--accent);"></div>
+      <span style="font-size:12.5px; font-weight:600; color:var(--ink-2);">{{ scenarioName }}</span>
+      <span class="mdp-mono" style="font-size:10px; color:var(--faint);">SCENARIO</span>
+    </button>
+
+    <button onClick="{{ openExport }}" style="display:flex; align-items:center; gap:8px; height:34px; padding:0 15px; background:var(--solid); border:none; border-radius:9px; cursor:pointer; font-family:'Hanken Grotesk',sans-serif;">
+      <span style="font-size:12.5px; font-weight:600; color:var(--solid-ink);">Export plan</span>
+      <span style="font-size:11px; color:var(--solid-ink); font-weight:600;">{{ watchCount }}</span>
+    </button>
+  </header>
+
+  <!-- ===== BODY GRID ===== -->
+  <div style="display:grid; grid-template-columns:262px 1fr 396px; flex:1; min-height:0;">
+
+    <!-- ===== LEFT RAIL ===== -->
+    <aside style="display:flex; flex-direction:column; min-height:0; background:var(--panel); border-right:1px solid var(--border); overflow-y:auto;">
+      <div style="padding:18px 18px 8px;">
+        <div class="mdp-mono" style="font-size:10px; font-weight:600; color:var(--faint); letter-spacing:0.08em; margin-bottom:11px;">CAPABILITY</div>
+        <div style="display:flex; flex-direction:column; gap:5px;">
+          <sc-for list="{{ capabilities }}" as="c" hint-placeholder-count="7">
+            <button onClick="{{ c.onClick }}" style="{{ c.style }}">
+              <span style="display:flex; align-items:center; gap:10px;">
+                <span style="width:8px; height:8px; border-radius:2px; background:{{ c.dot }};"></span>
+                <span style="font-size:13px; font-weight:600;">{{ c.label }}</span>
+              </span>
+              <span class="mdp-mono" style="font-size:10px; opacity:0.6;">{{ c.cov }}</span>
+            </button>
+          </sc-for>
+        </div>
+      </div>
+
+      <div style="height:1px; background:var(--border-3); margin:14px 18px;"></div>
+
+      <div style="padding:0 18px;">
+        <div class="mdp-mono" style="font-size:10px; font-weight:600; color:var(--faint); letter-spacing:0.08em; margin-bottom:10px;">GEOGRAPHIC GRAIN</div>
+        <div style="display:flex; gap:5px; padding:4px; background:var(--panel-2); border:1px solid var(--border-3); border-radius:10px;">
+          <sc-for list="{{ grains }}" as="g" hint-placeholder-count="3">
+            <button onClick="{{ g.onClick }}" style="{{ g.style }}">{{ g.label }}</button>
+          </sc-for>
+        </div>
+      </div>
+
+      <div style="padding:16px 18px 0;">
+        <div class="mdp-mono" style="font-size:10px; font-weight:600; color:var(--faint); letter-spacing:0.08em; margin-bottom:10px;">UNCERTAINTY OVERLAY</div>
+        <button onClick="{{ toggleOverlay }}" style="display:flex; align-items:center; justify-content:space-between; width:100%; padding:11px 12px; background:var(--panel-3); border:1px solid var(--border-3); border-radius:10px; cursor:pointer; text-align:left; font-family:'Hanken Grotesk',sans-serif;">
+          <span style="display:block;">
+            <span style="display:block; font-size:12.5px; font-weight:600; color:var(--ink-2);">Hatch data-poor areas</span>
+            <span style="display:block; font-size:11px; color:var(--faint); margin-top:2px;">Mark low-evidence regions</span>
+          </span>
+          <span style="width:36px; height:21px; border-radius:99px; background:{{ overlayTrack }}; position:relative; flex-shrink:0; transition:background .15s;">
+            <span style="position:absolute; top:2px; left:{{ overlayKnob }}; width:17px; height:17px; border-radius:50%; background:#fff; box-shadow:0 1px 3px rgba(0,0,0,.35); transition:left .15s;"></span>
+          </span>
+        </button>
+      </div>
+
+      <div style="height:1px; background:var(--border-3); margin:16px 18px;"></div>
+
+      <!-- LEGEND -->
+      <div style="padding:0 18px 18px;">
+        <div class="mdp-mono" style="font-size:10px; font-weight:600; color:var(--faint); letter-spacing:0.08em; margin-bottom:11px;">VERDICT LEGEND</div>
+        <div style="display:flex; flex-direction:column; gap:9px;">
+          <sc-for list="{{ legend }}" as="l" hint-placeholder-count="4">
+            <div style="display:flex; align-items:flex-start; gap:10px;">
+              <span style="width:13px; height:13px; border-radius:4px; background:{{ l.color }}; margin-top:1px; flex-shrink:0; background-image:{{ l.hatch }};"></span>
+              <span style="display:block;">
+                <span style="display:block; font-size:12px; font-weight:600; color:var(--ink-2); line-height:1.2;">{{ l.title }}</span>
+                <span style="display:block; font-size:10.5px; color:var(--faint); line-height:1.25; margin-top:1px;">{{ l.desc }}</span>
+              </span>
+            </div>
+          </sc-for>
+        </div>
+        <div style="margin-top:16px; padding:11px 12px; background:var(--callout-bg); border:1px solid var(--callout-border); border-radius:10px;">
+          <div style="font-size:11px; color:var(--callout-ink); line-height:1.45;">A region is only a <b style="color:var(--callout-strong);">confirmed desert</b> when high risk meets high evidence. High risk on thin data is a <b style="color:var(--callout-strong);">blind spot</b> — not a conclusion.</div>
+        </div>
+      </div>
+    </aside>
+
+    <!-- ===== CENTER ===== -->
+    <main style="display:flex; flex-direction:column; min-height:0; min-width:0; padding:16px; gap:14px; overflow:hidden;">
+
+      <!-- summary band -->
+      <div style="display:flex; gap:10px;">
+        <sc-for list="{{ summary }}" as="s" hint-placeholder-count="4">
+          <div style="flex:1; background:var(--panel); border:1px solid var(--border); border-radius:13px; padding:12px 14px; position:relative; overflow:hidden;">
+            <div style="position:absolute; top:0; left:0; width:3px; height:100%; background:{{ s.color }};"></div>
+            <div style="display:flex; align-items:baseline; gap:7px;">
+              <span style="font-size:26px; font-weight:800; letter-spacing:-0.02em; color:var(--ink);">{{ s.count }}</span>
+              <span class="mdp-mono" style="font-size:10px; color:{{ s.color }}; font-weight:600;">{{ s.pct }}</span>
+            </div>
+            <div style="font-size:11.5px; font-weight:600; color:var(--muted); margin-top:1px;">{{ s.label }}</div>
+          </div>
+        </sc-for>
+      </div>
+
+      <!-- view card -->
+      <div style="flex:1; min-height:0; background:var(--panel); border:1px solid var(--border); border-radius:14px; display:flex; flex-direction:column; overflow:hidden;">
+        <div style="display:flex; align-items:center; gap:14px; padding:13px 16px; border-bottom:1px solid var(--border-3);">
+          <div style="display:flex; gap:4px; padding:4px; background:var(--panel-2); border-radius:9px;">
+            <sc-for list="{{ tabs }}" as="t" hint-placeholder-count="2">
+              <button onClick="{{ t.onClick }}" style="{{ t.style }}">{{ t.label }}</button>
+            </sc-for>
+          </div>
+          <div style="flex:1;"></div>
+          <div style="font-size:13px; color:var(--muted);">{{ centerTitle }}</div>
+          <div class="mdp-mono" style="font-size:10.5px; color:var(--faint);">{{ centerSub }}</div>
+        </div>
+
+        <div style="flex:1; min-height:0; position:relative;">
+          <!-- MAP (always mounted; toggled with display) -->
+          <div style="position:absolute; inset:0; display:{{ mapDisplay }};">
+            <div id="mdp-map-host" style="position:absolute; inset:0;"></div>
+            <sc-if value="{{ mapLoading }}" hint-placeholder-val="{{ false }}">
+              <div style="position:absolute; inset:0; display:flex; align-items:center; justify-content:center;">
+                <span class="mdp-mono" style="font-size:12px; color:var(--faint);">loading boundaries…</span>
+              </div>
+            </sc-if>
+            <sc-if value="{{ mapError }}" hint-placeholder-val="{{ false }}">
+              <div style="position:absolute; inset:0; display:flex; align-items:center; justify-content:center; padding:30px;">
+                <span style="font-size:12.5px; color:var(--faint); text-align:center; max-width:280px;">Map boundaries unavailable offline. The quadrant and ranked views carry the full analysis.</span>
+              </div>
+            </sc-if>
+            <!-- map legend strip -->
+            <div style="position:absolute; left:16px; bottom:14px; display:flex; align-items:center; gap:10px; padding:8px 12px; background:var(--legend-bg); border:1px solid var(--border-2); border-radius:10px; backdrop-filter:blur(6px);">
+              <span class="mdp-mono" style="font-size:9.5px; color:var(--faint);">LOW RISK</span>
+              <span style="width:104px; height:9px; border-radius:99px; background:linear-gradient(90deg,#79c39a,#e8d36a,#e79a3d,#d23f2d);"></span>
+              <span class="mdp-mono" style="font-size:9.5px; color:var(--faint);">HIGH</span>
+              <span style="width:1px; height:16px; background:var(--border); margin:0 2px;"></span>
+              <span style="width:14px; height:11px; border-radius:3px; background-image:repeating-linear-gradient(45deg,#cfd3db 0,#cfd3db 2px,transparent 2px,transparent 4px); border:1px solid #d8dbe2;"></span>
+              <span class="mdp-mono" style="font-size:9.5px; color:var(--faint);">DATA-POOR</span>
+            </div>
+          </div>
+
+          <!-- QUADRANT -->
+          <div style="position:absolute; inset:0; display:{{ quadDisplay }}; padding:18px 22px;">
+            <div style="position:relative; width:100%; height:100%;">
+              <!-- y label -->
+              <div style="position:absolute; left:-4px; top:50%; transform:translateY(-50%) rotate(-90deg); transform-origin:left; font-size:0;"></div>
+              <svg viewBox="0 0 {{ qW }} {{ qH }}" preserveAspectRatio="xMidYMid meet" style="width:100%; height:100%; overflow:visible;">
+                <!-- quadrant backgrounds -->
+                <rect x="{{ qMidX }}" y="0" width="{{ qHalfW }}" height="{{ qMidY }}" style="fill:var(--q-desert)"></rect>
+                <rect x="0" y="0" width="{{ qMidX }}" height="{{ qMidY }}" style="fill:var(--q-blind)"></rect>
+                <rect x="{{ qMidX }}" y="{{ qMidY }}" width="{{ qHalfW }}" height="{{ qHalfH }}" style="fill:var(--q-served)"></rect>
+                <rect x="0" y="{{ qMidY }}" width="{{ qMidX }}" height="{{ qHalfH }}" style="fill:var(--q-unknown)"></rect>
+                <!-- grid mid lines -->
+                <line x1="{{ qMidX }}" y1="0" x2="{{ qMidX }}" y2="{{ qH }}" style="stroke:var(--q-grid)" stroke-width="1" stroke-dasharray="4 4"></line>
+                <line x1="0" y1="{{ qMidY }}" x2="{{ qW }}" y2="{{ qMidY }}" style="stroke:var(--q-grid)" stroke-width="1" stroke-dasharray="4 4"></line>
+                <!-- quadrant labels -->
+                <text x="{{ qLabRX }}" y="22" text-anchor="end" font-family="IBM Plex Mono" font-size="11" font-weight="600" fill="#c0654f">CONFIRMED DESERTS</text>
+                <text x="14" y="22" font-family="IBM Plex Mono" font-size="11" font-weight="600" fill="#c79a4a">BLIND SPOTS · investigate</text>
+                <text x="{{ qLabRX }}" y="{{ qBotY }}" text-anchor="end" font-family="IBM Plex Mono" font-size="11" font-weight="600" fill="#5aa67e">ADEQUATELY SERVED</text>
+                <text x="14" y="{{ qBotY }}" font-family="IBM Plex Mono" font-size="11" font-weight="600" fill="#a9b0bd">UNVERIFIED · low data</text>
+                <!-- dots -->
+                <sc-for list="{{ qDots }}" as="d" hint-placeholder-count="20">
+                  <circle cx="{{ d.cx }}" cy="{{ d.cy }}" r="{{ d.r }}" fill="{{ d.fill }}" fill-opacity="0.82" stroke="{{ d.stroke }}" stroke-width="{{ d.sw }}" onClick="{{ d.onClick }}" style="cursor:pointer;"></circle>
+                </sc-for>
+                <sc-for list="{{ qLabels }}" as="t" hint-placeholder-count="6">
+                  <text x="{{ t.x }}" y="{{ t.y }}" font-family="Hanken Grotesk" font-size="11" font-weight="600" style="fill:var(--ink)">{{ t.name }}</text>
+                </sc-for>
+                <!-- axes -->
+                <text x="{{ qW }}" y="{{ qAxisY }}" text-anchor="end" font-family="IBM Plex Mono" font-size="10" fill="#9aa0ad">DATA CONFIDENCE →</text>
+              </svg>
+              <div class="mdp-mono" style="position:absolute; left:-2px; top:8px; font-size:10px; color:var(--faint); transform:rotate(0);">CARE-GAP RISK ↑</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </main>
+
+    <!-- ===== RIGHT PANEL ===== -->
+    <aside style="display:flex; flex-direction:column; min-height:0; background:var(--panel); border-left:1px solid var(--border);">
+      <!-- DETAIL or LIST -->
+      <sc-if value="{{ sel }}" hint-placeholder-val="{{ false }}">
+        <div style="display:flex; flex-direction:column; min-height:0; animation:mdpfade .18s ease;">
+          <!-- detail header -->
+          <div style="padding:16px 18px 14px; border-bottom:1px solid var(--border-3);">
+            <button onClick="{{ clearSel }}" style="display:inline-flex; align-items:center; gap:6px; background:none; border:none; padding:0; cursor:pointer; color:var(--faint); font-family:'Hanken Grotesk',sans-serif; font-size:11.5px; font-weight:600; margin-bottom:11px;">‹ Back to ranking</button>
+            <div style="display:flex; align-items:flex-start; justify-content:space-between; gap:10px;">
+              <div>
+                <div style="font-size:19px; font-weight:800; letter-spacing:-0.02em; line-height:1.1;">{{ sel.name }}</div>
+                <div class="mdp-mono" style="font-size:11px; color:var(--faint); margin-top:3px;">{{ sel.sub }}</div>
+              </div>
+              <div style="display:inline-flex; align-items:center; gap:6px; padding:5px 10px; border-radius:99px; background:{{ sel.verdictBg }}; flex-shrink:0;">
+                <span style="width:7px; height:7px; border-radius:50%; background:{{ sel.verdictColor }};"></span>
+                <span style="font-size:11.5px; font-weight:700; color:{{ sel.verdictInk }};">{{ sel.verdictLabel }}</span>
+              </div>
+            </div>
+            <sc-if value="{{ sel.overridden }}" hint-placeholder-val="{{ false }}">
+              <div style="margin-top:9px; font-size:11px; color:var(--warn-ink); background:var(--warn-bg); border:1px solid var(--warn-border); padding:6px 9px; border-radius:8px;">Verdict manually overridden · <span onClick="{{ clearOverride }}" style="text-decoration:underline; cursor:pointer;">reset to model</span></div>
+            </sc-if>
+          </div>
+
+          <div style="flex:1; min-height:0; overflow-y:auto; padding:16px 18px 22px;">
+            <!-- two metrics -->
+            <div style="display:flex; gap:10px; margin-bottom:18px;">
+              <div style="flex:1; padding:12px 13px; background:var(--panel-3); border:1px solid var(--border-3); border-radius:11px;">
+                <div class="mdp-mono" style="font-size:9.5px; color:var(--faint); letter-spacing:0.05em;">CARE-GAP RISK</div>
+                <div style="display:flex; align-items:baseline; gap:5px; margin-top:3px;"><span style="font-size:24px; font-weight:800; color:{{ sel.riskColor }};">{{ sel.risk }}</span><span style="font-size:12px; color:var(--faint); font-weight:600;">/100</span></div>
+                <div style="height:5px; border-radius:99px; background:var(--border-3); margin-top:7px; overflow:hidden;"><div style="height:100%; width:{{ sel.riskW }}; background:{{ sel.riskColor }};"></div></div>
+              </div>
+              <div style="flex:1; padding:12px 13px; background:var(--panel-3); border:1px solid var(--border-3); border-radius:11px;">
+                <div class="mdp-mono" style="font-size:9.5px; color:var(--faint); letter-spacing:0.05em;">DATA CONFIDENCE</div>
+                <div style="display:flex; align-items:baseline; gap:5px; margin-top:3px;"><span style="font-size:24px; font-weight:800; color:var(--ink-2);">{{ sel.conf }}</span><span style="font-size:12px; color:var(--faint); font-weight:600;">/100</span></div>
+                <div style="height:5px; border-radius:99px; background:var(--border-3); margin-top:7px; overflow:hidden;"><div style="height:100%; width:{{ sel.confW }}; background:#6b7180;"></div></div>
+              </div>
+            </div>
+
+            <!-- evidence ledger -->
+            <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:10px;">
+              <div class="mdp-mono" style="font-size:10px; font-weight:600; color:var(--faint); letter-spacing:0.06em;">EVIDENCE LEDGER · {{ sel.capLabel }}</div>
+              <div class="mdp-mono" style="font-size:10px; color:var(--faint);">{{ sel.facCount }} facilities</div>
+            </div>
+            <div style="display:flex; gap:6px; margin-bottom:14px;">
+              <div style="flex:{{ sel.strongFlex }}; height:7px; border-radius:99px; background:#2f9e6b;" title="strong"></div>
+              <div style="flex:{{ sel.partialFlex }}; height:7px; border-radius:99px; background:#e0a32b;" title="partial"></div>
+              <div style="flex:{{ sel.weakFlex }}; height:7px; border-radius:99px; background:#d6d9e0;" title="weak"></div>
+            </div>
+            <div style="display:flex; gap:14px; margin-bottom:16px;">
+              <span style="font-size:11px; color:var(--muted);"><b style="color:#2f9e6b;">{{ sel.strong }}</b> strong</span>
+              <span style="font-size:11px; color:var(--muted);"><b style="color:#c08416;">{{ sel.partial }}</b> partial</span>
+              <span style="font-size:11px; color:var(--muted);"><b style="color:var(--faint);">{{ sel.weak }}</b> weak/claim-only</span>
+            </div>
+
+            <!-- citations -->
+            <div style="display:flex; flex-direction:column; gap:9px; margin-bottom:20px;">
+              <sc-for list="{{ sel.evidence }}" as="e" hint-placeholder-count="3">
+                <div style="padding:12px 13px; background:var(--panel); border:1px solid var(--border-3); border-radius:11px;">
+                  <div style="display:flex; align-items:center; justify-content:space-between; gap:8px; margin-bottom:6px;">
+                    <span style="font-size:12px; font-weight:700; color:var(--ink-2);">{{ e.facility }}</span>
+                    <span style="display:inline-flex; align-items:center; gap:5px; padding:2px 8px; border-radius:99px; background:{{ e.tagBg }};"><span style="width:6px; height:6px; border-radius:50%; background:{{ e.tagColor }};"></span><span style="font-size:10px; font-weight:700; color:{{ e.tagInk }};">{{ e.tag }}</span></span>
+                  </div>
+                  <div style="font-size:12.5px; color:var(--ink-2); line-height:1.45; font-style:italic;">{{ e.quote }}</div>
+                  <div class="mdp-mono" style="font-size:10px; color:var(--faint); margin-top:7px;">source · {{ e.source }}</div>
+                </div>
+              </sc-for>
+            </div>
+
+            <!-- override -->
+            <div class="mdp-mono" style="font-size:10px; font-weight:600; color:var(--faint); letter-spacing:0.06em; margin-bottom:9px;">ANALYST OVERRIDE</div>
+            <div style="display:grid; grid-template-columns:1fr 1fr; gap:6px; margin-bottom:18px;">
+              <sc-for list="{{ sel.overrideOpts }}" as="o" hint-placeholder-count="4">
+                <button onClick="{{ o.onClick }}" style="{{ o.style }}">{{ o.label }}</button>
+              </sc-for>
+            </div>
+
+            <!-- note -->
+            <div class="mdp-mono" style="font-size:10px; font-weight:600; color:var(--faint); letter-spacing:0.06em; margin-bottom:9px;">PLANNER NOTE</div>
+            <textarea value="{{ sel.note }}" onChange="{{ saveNote }}" placeholder="Add context, a field observation, or a follow-up action…" style="width:100%; min-height:70px; resize:vertical; padding:11px 12px; border:1px solid var(--border-2); border-radius:11px; font-family:'Hanken Grotesk',sans-serif; font-size:12.5px; color:var(--ink-2); outline:none; background:var(--panel-3); line-height:1.45;"></textarea>
+          </div>
+
+          <!-- detail footer -->
+          <div style="padding:12px 18px; border-top:1px solid var(--border-3); display:flex; gap:8px;">
+            <button onClick="{{ sel.onWatch }}" style="{{ sel.watchStyle }}">{{ sel.watchLabel }}</button>
+          </div>
+        </div>
+      </sc-if>
+
+      <sc-if value="{{ showList }}" hint-placeholder-val="{{ true }}">
+        <div style="display:flex; flex-direction:column; min-height:0;">
+          <div style="padding:15px 18px 12px; border-bottom:1px solid var(--border-3);">
+            <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:11px;">
+              <div style="font-size:14px; font-weight:700;">{{ rankTitle }}</div>
+              <div class="mdp-mono" style="font-size:10.5px; color:var(--faint);">{{ rankCount }}</div>
+            </div>
+            <sc-if value="{{ focusedState }}" hint-placeholder-val="{{ false }}">
+              <div style="display:inline-flex; align-items:center; gap:7px; padding:4px 10px; background:var(--accent-soft); border:1px solid var(--accent-border); border-radius:99px; margin-bottom:11px;">
+                <span style="font-size:11px; font-weight:600; color:var(--accent);">{{ focusedState }}</span>
+                <span onClick="{{ clearFocus }}" style="cursor:pointer; color:var(--accent); font-size:13px; line-height:1;">×</span>
+              </div>
+            </sc-if>
+            <div style="display:flex; gap:5px;">
+              <sc-for list="{{ sorts }}" as="s" hint-placeholder-count="4">
+                <button onClick="{{ s.onClick }}" style="{{ s.style }}">{{ s.label }}</button>
+              </sc-for>
+            </div>
+          </div>
+          <div style="flex:1; min-height:0; overflow-y:auto; padding:8px 12px 16px;">
+            <sc-for list="{{ ranked }}" as="r" hint-placeholder-count="9">
+              <div onClick="{{ r.onClick }}" style="display:flex; align-items:center; gap:11px; padding:11px 11px; border-radius:11px; cursor:pointer; margin-bottom:3px; background:{{ r.bg }}; border:1px solid {{ r.border }};">
+                <div style="width:28px; text-align:center; flex-shrink:0;">
+                  <span class="mdp-mono" style="font-size:12px; font-weight:600; color:var(--faint);">{{ r.rank }}</span>
+                </div>
+                <div style="width:5px; height:34px; border-radius:99px; background:{{ r.verdictColor }}; flex-shrink:0; background-image:{{ r.hatch }};"></div>
+                <div style="flex:1; min-width:0;">
+                  <div style="display:flex; align-items:center; gap:6px; min-width:0;">
+                    <span style="flex:1 1 auto; min-width:0; font-size:13px; font-weight:700; color:var(--ink-2); white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">{{ r.name }}</span>
+                    <sc-if value="{{ r.watched }}" hint-placeholder-val="{{ false }}"><span style="flex:none; color:var(--accent); font-size:11px;">★</span></sc-if>
+                    <sc-if value="{{ r.hasNote }}" hint-placeholder-val="{{ false }}"><span style="flex:none; width:5px; height:5px; border-radius:50%; background:var(--accent);"></span></sc-if>
+                  </div>
+                  <div class="mdp-mono" style="font-size:10px; color:var(--faint); margin-top:1px;">{{ r.sub }}</div>
+                </div>
+                <div style="text-align:right; flex-shrink:0;">
+                  <div style="font-size:14px; font-weight:800; color:{{ r.riskColor }}; line-height:1;">{{ r.risk }}</div>
+                  <div class="mdp-mono" style="font-size:9px; color:var(--faint); margin-top:2px;">CONF {{ r.conf }}</div>
+                </div>
+              </div>
+            </sc-for>
+          </div>
+        </div>
+      </sc-if>
+    </aside>
+  </div>
+
+  <!-- ===== EXPORT MODAL ===== -->
+  <sc-if value="{{ showExport }}" hint-placeholder-val="{{ false }}">
+    <div onClick="{{ closeModals }}" style="position:fixed; inset:0; background:rgba(20,22,30,.42); backdrop-filter:blur(3px); display:flex; align-items:center; justify-content:center; z-index:50;">
+      <div onClick="{{ stop }}" style="width:560px; max-height:80vh; background:var(--panel); border-radius:18px; overflow:hidden; display:flex; flex-direction:column; box-shadow:0 24px 60px rgba(0,0,0,.3); animation:mdpfade .2s ease;">
+        <div style="padding:20px 22px; border-bottom:1px solid var(--border-3);">
+          <div style="font-size:17px; font-weight:800; letter-spacing:-0.01em;">Care-gap action plan</div>
+          <div style="font-size:12.5px; color:var(--faint); margin-top:2px;">{{ scenarioName }} · {{ capLabel }} · generated for planner review</div>
+        </div>
+        <div style="flex:1; overflow-y:auto; padding:18px 22px;">
+          <sc-if value="{{ hasWatch }}" hint-placeholder-val="{{ true }}">
+            <div style="display:flex; flex-direction:column; gap:10px;">
+              <sc-for list="{{ exportRegions }}" as="r" hint-placeholder-count="3">
+                <div style="padding:13px 14px; border:1px solid var(--border-3); border-radius:12px;">
+                  <div style="display:flex; align-items:center; justify-content:space-between;">
+                    <span style="font-size:14px; font-weight:700;">{{ r.name }}</span>
+                    <span style="font-size:11.5px; font-weight:700; color:{{ r.verdictColor }};">{{ r.verdictLabel }}</span>
+                  </div>
+                  <div class="mdp-mono" style="font-size:10.5px; color:var(--faint); margin:4px 0 7px;">{{ r.sub }} · RISK {{ r.risk }} · CONF {{ r.conf }}</div>
+                  <div style="font-size:12px; color:var(--muted); line-height:1.45;">{{ r.action }}</div>
+                  <sc-if value="{{ r.note }}" hint-placeholder-val="{{ false }}">
+                    <div style="margin-top:7px; font-size:11.5px; color:var(--accent); background:var(--accent-soft); padding:6px 9px; border-radius:8px;">Note · {{ r.note }}</div>
+                  </sc-if>
+                </div>
+              </sc-for>
+            </div>
+          </sc-if>
+          <sc-if value="{{ noWatch }}" hint-placeholder-val="{{ false }}">
+            <div style="padding:40px 0; text-align:center; color:var(--faint); font-size:13px;">No regions on the watchlist yet. Star regions from the detail view to build a plan.</div>
+          </sc-if>
+        </div>
+        <div style="padding:14px 22px; border-top:1px solid var(--border-3); display:flex; justify-content:flex-end; gap:9px;">
+          <button onClick="{{ closeModals }}" style="height:38px; padding:0 16px; background:var(--panel-2); border:1px solid var(--border-2); border-radius:10px; font-family:'Hanken Grotesk',sans-serif; font-size:13px; font-weight:600; color:var(--ink-2); cursor:pointer;">Close</button>
+          <button onClick="{{ printPlan }}" style="height:38px; padding:0 18px; background:var(--solid); border:none; border-radius:10px; font-family:'Hanken Grotesk',sans-serif; font-size:13px; font-weight:600; color:var(--solid-ink); cursor:pointer;">Print / save PDF</button>
+        </div>
+      </div>
+    </div>
+  </sc-if>
+
+  <!-- ===== SCENARIOS MODAL ===== -->
+  <sc-if value="{{ showScenarios }}" hint-placeholder-val="{{ false }}">
+    <div onClick="{{ closeModals }}" style="position:fixed; inset:0; background:rgba(20,22,30,.42); backdrop-filter:blur(3px); display:flex; align-items:center; justify-content:center; z-index:50;">
+      <div onClick="{{ stop }}" style="width:460px; background:var(--panel); border-radius:18px; overflow:hidden; box-shadow:0 24px 60px rgba(0,0,0,.3); animation:mdpfade .2s ease;">
+        <div style="padding:20px 22px; border-bottom:1px solid var(--border-3);">
+          <div style="font-size:17px; font-weight:800; letter-spacing:-0.01em;">Saved scenarios</div>
+          <div style="font-size:12.5px; color:var(--faint); margin-top:2px;">Capability, grain &amp; overlay snapshots</div>
+        </div>
+        <div style="padding:16px 22px;">
+          <div style="display:flex; gap:8px; margin-bottom:16px;">
+            <input value="{{ newScenario }}" onChange="{{ setNewScenario }}" placeholder="Name this scenario…" style="flex:1; height:38px; padding:0 12px; border:1px solid var(--border-2); border-radius:10px; font-family:'Hanken Grotesk',sans-serif; font-size:13px; outline:none;" />
+            <button onClick="{{ saveScenario }}" style="height:38px; padding:0 16px; background:var(--accent); border:none; border-radius:10px; font-family:'Hanken Grotesk',sans-serif; font-size:13px; font-weight:600; color:var(--solid-ink); cursor:pointer;">Save</button>
+          </div>
+          <div style="display:flex; flex-direction:column; gap:7px;">
+            <sc-for list="{{ scenarioList }}" as="s" hint-placeholder-count="2">
+              <div style="display:flex; align-items:center; gap:11px; padding:11px 13px; border:1px solid var(--border-3); border-radius:11px;">
+                <div style="flex:1; cursor:pointer;" onClick="{{ s.onApply }}">
+                  <div style="font-size:13px; font-weight:700;">{{ s.name }}</div>
+                  <div class="mdp-mono" style="font-size:10px; color:var(--faint); margin-top:1px;">{{ s.desc }}</div>
+                </div>
+                <button onClick="{{ s.onApply }}" style="height:30px; padding:0 12px; background:var(--accent-soft); border:none; border-radius:8px; font-family:'Hanken Grotesk',sans-serif; font-size:12px; font-weight:600; color:var(--accent); cursor:pointer;">Load</button>
+                <span onClick="{{ s.onDelete }}" style="cursor:pointer; color:var(--faint); font-size:17px; line-height:1;">×</span>
+              </div>
+            </sc-for>
+            <sc-if value="{{ noScenarios }}" hint-placeholder-val="{{ true }}">
+              <div style="padding:18px 0; text-align:center; color:var(--faint); font-size:12.5px;">No saved scenarios yet.</div>
+            </sc-if>
+          </div>
+        </div>
+      </div>
+    </div>
+  </sc-if>
+
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script>
+class Component extends DCLogic {
+  constructor(props) {
+    super(props);
+    // ---- static reference data ----
+    this.CAPS = [
+      { id: 'icu', label: 'ICU', cov: '0.61', quotes: ['ICU with ventilator support, 8 beds.', 'Critical care unit available 24x7.', 'Intensive care; multipara monitors fitted.'] },
+      { id: 'maternity', label: 'Maternity', cov: '0.74', quotes: ['Labour room and C-section facility.', 'Maternity ward, 20 inpatient beds.', 'Institutional deliveries conducted monthly.'] },
+      { id: 'emergency', label: 'Emergency', cov: '0.69', quotes: ['24x7 casualty and emergency services.', 'Ambulance dispatch and trauma triage.', 'Round-the-clock emergency OPD.'] },
+      { id: 'oncology', label: 'Oncology', cov: '0.33', quotes: ['Chemotherapy day-care unit operating.', 'Cancer screening and palliative care.', 'Oncology consultation, referral linkage.'] },
+      { id: 'trauma', label: 'Trauma', cov: '0.41', quotes: ['Trauma centre with orthopaedic surgery.', 'Accident wing, fracture and ortho care.', 'Level-II trauma facility claimed.'] },
+      { id: 'nicu', label: 'NICU', cov: '0.38', quotes: ['NICU with 6 warmers and phototherapy.', 'Sick newborn care unit (SNCU) functional.', 'Neonatal ventilation available.'] },
+      { id: 'dialysis', label: 'Dialysis', cov: '0.29', quotes: ['Dialysis unit, 4 machines, 2 shifts.', 'Haemodialysis available under PMNDP.', 'Renal care with nephrology referral.'] },
+    ];
+    this.POP = { 'Uttar Pradesh':231,'Maharashtra':124,'Bihar':124,'West Bengal':99,'Madhya Pradesh':86,'Rajasthan':79,'Tamil Nadu':76,'Gujarat':71,'Karnataka':67,'Andhra Pradesh':53,'Odisha':46,'Telangana':38,'Jharkhand':39,'Kerala':35,'Assam':35,'Punjab':30,'Chhattisgarh':30,'Haryana':30,'Delhi':21,'Jammu and Kashmir':13,'Uttarakhand':11,'Himachal Pradesh':7,'Tripura':4,'Meghalaya':3.3,'Manipur':3,'Nagaland':2.2,'Goa':1.6,'Arunachal Pradesh':1.6,'Mizoram':1.2,'Sikkim':0.7 };
+    this.STATES = Object.keys(this.POP);
+    this.DISTRICTS = [
+      ['Bahraich','Uttar Pradesh','271'],['Shrawasti','Uttar Pradesh','271'],['Sitapur','Uttar Pradesh','261'],
+      ['Gadchiroli','Maharashtra','442'],['Nandurbar','Maharashtra','425'],['Mumbai Suburban','Maharashtra','400'],
+      ['Araria','Bihar','854'],['Sheohar','Bihar','843'],['Kishanganj','Bihar','855'],
+      ['Murshidabad','West Bengal','742'],['Malda','West Bengal','732'],
+      ['Barwani','Madhya Pradesh','451'],['Sheopur','Madhya Pradesh','476'],['Jhabua','Madhya Pradesh','457'],
+      ['Barmer','Rajasthan','344'],['Jaisalmer','Rajasthan','345'],['Banswara','Rajasthan','327'],
+      ['Nabarangpur','Odisha','764'],['Koraput','Odisha','764'],['Malkangiri','Odisha','764'],['Kandhamal','Odisha','762'],
+      ['Dantewada','Chhattisgarh','494'],['Bijapur','Chhattisgarh','494'],['Sukma','Chhattisgarh','494'],
+      ['Pakur','Jharkhand','816'],['Sahibganj','Jharkhand','816'],
+      ['Dhalai','Tripura','799'],['Dhubri','Assam','783'],['Baksa','Assam','781'],
+      ['Vizianagaram','Andhra Pradesh','535'],['Yadgir','Karnataka','585'],['Kalaburagi','Karnataka','585'],
+      ['Wayanad','Kerala','673'],['Ramban','Jammu and Kashmir','182'],['Kupwara','Jammu and Kashmir','193'],['Chamba','Himachal Pradesh','176'],
+    ];
+    this.FAC_KINDS = ['District Hospital','Community Health Centre','Sub-District Hospital','Rural Hospital','Medical College &amp; Hospital','Trust Hospital'];
+
+    // ---- persisted state ----
+    const P = this._load();
+    this.state = {
+      cap: 'icu', grain: 'state', overlay: true, sort: 'priority',
+      tab: 'map', sel: null, query: '', focusedState: null,
+      showExport: false, showScenarios: false, newScenario: '',
+      watch: P.watch || [], notes: P.notes || {}, overrides: P.overrides || {},
+      scenarios: P.scenarios || [], scenarioName: P.scenarioName || 'Baseline',
+      theme: P.theme === 'dark' ? 'dark' : 'light',
+      mapLoading: true, mapError: false,
+    };
+    // quadrant geometry
+    this.qW = 760; this.qH = 460;
+  }
+
+  // ---------- persistence ----------
+  _key() { return 'mdp_planner_v1'; }
+  _load() { try { return JSON.parse(localStorage.getItem(this._key())) || {}; } catch (e) { return {}; } }
+  _save() {
+    const { watch, notes, overrides, scenarios, scenarioName, theme } = this.state;
+    try { localStorage.setItem(this._key(), JSON.stringify({ watch, notes, overrides, scenarios, scenarioName, theme })); } catch (e) {}
+  }
+  _mc() { return document.documentElement.getAttribute('data-theme') === 'dark' ? { stroke: '#1d222e', focus: '#eef1f6' } : { stroke: '#ffffff', focus: '#1b1d26' }; }
+  _applyThemeAttr(t) { if (t === 'dark') document.documentElement.setAttribute('data-theme', 'dark'); else document.documentElement.removeAttribute('data-theme'); }
+  setTheme = (t) => { this._applyThemeAttr(t); this.setState({ theme: t }, () => { this._save(); if (this._drawn) this._paintMap(); }); };
+  _segBtn(active) { return `display:flex; align-items:center; justify-content:center; width:32px; height:26px; border:none; border-radius:7px; cursor:pointer; background:${active ? 'var(--panel)' : 'transparent'}; color:${active ? 'var(--accent)' : 'var(--faint)'}; box-shadow:${active ? '0 1px 2px rgba(0,0,0,.14)' : 'none'};`; }
+
+  // ---------- deterministic data ----------
+  _hash(s) { let h = 2166136261 >>> 0; for (let i = 0; i < s.length; i++) { h ^= s.charCodeAt(i); h = Math.imul(h, 16777619) >>> 0; } return h >>> 0; }
+  _rand(s) { return (this._hash(s) % 100000) / 100000; }
+
+  _coverageBase(name, isDist) {
+    let c = 34 + this._rand(name + '|cov') * 56;
+    if (isDist) c -= 17 + this._rand(name + '|dcov') * 10;
+    return Math.max(12, Math.min(96, c));
+  }
+
+  _metrics(name, isDist, cap) {
+    const r0 = this._rand(name + '|' + cap + '|r');
+    let risk = 14 + r0 * 78;
+    if (isDist) risk += 12;
+    risk = Math.max(6, Math.min(97, risk));
+    const capPenalty = (1 - parseFloat(this.CAPS.find(c => c.id === cap).cov)) * 22;
+    let conf = this._coverageBase(name, isDist) - capPenalty + (this._rand(name + cap + '|c') - 0.5) * 18;
+    conf = Math.max(8, Math.min(96, conf));
+    return { risk: Math.round(risk), conf: Math.round(conf) };
+  }
+
+  _verdict(risk, conf) {
+    const T = 58;
+    if (risk >= T && conf >= T) return 'desert';
+    if (risk >= T && conf < T) return 'blind';
+    if (risk < T && conf >= T) return 'served';
+    return 'unknown';
+  }
+  _vMeta(v) {
+    return ({
+      desert: { label: 'Confirmed desert', color: '#d23f2d', ink: '#a32b1c', bg: '#fbeae7' },
+      blind: { label: 'Blind spot', color: '#e0a32b', ink: '#a9781a', bg: '#fcf3e3' },
+      served: { label: 'Adequately served', color: '#2f9e6b', ink: '#1f7a50', bg: '#e8f5ee' },
+      unknown: { label: 'Unverified', color: '#9aa0ad', ink: 'var(--muted)', bg: '#f1f2f5' },
+    })[v];
+  }
+  _riskColor(r) {
+    const stops = [[0,[0.76,0.10,150]],[40,[0.85,0.13,95]],[66,[0.70,0.16,52]],[100,[0.55,0.19,27]]];
+    const t = Math.max(0, Math.min(100, r));
+    let a = stops[0], b = stops[stops.length-1];
+    for (let i = 0; i < stops.length-1; i++) { if (t >= stops[i][0] && t <= stops[i+1][0]) { a = stops[i]; b = stops[i+1]; break; } }
+    const f = (t - a[0]) / Math.max(1, b[0] - a[0]);
+    const L = a[1][0] + (b[1][0]-a[1][0])*f, C = a[1][1] + (b[1][1]-a[1][1])*f, H = a[1][2] + (b[1][2]-a[1][2])*f;
+    return `oklch(${L.toFixed(3)} ${C.toFixed(3)} ${H.toFixed(1)})`;
+  }
+
+  _hatchCss(active) { return active ? 'repeating-linear-gradient(45deg, rgba(255,255,255,.55) 0, rgba(255,255,255,.55) 2px, transparent 2px, transparent 5px)' : 'none'; }
+
+  // unit lists by grain
+  _units() {
+    if (this.state.grain === 'state') {
+      return this.STATES.map(n => ({ name: n, state: n, sub: 'State', pop: this.POP[n] || 20, isDist: false }));
+    }
+    const isPin = this.state.grain === 'pin';
+    return this.DISTRICTS.map(d => ({
+      name: isPin ? (d[2] + 'xxx · ' + d[0]) : d[0],
+      plain: d[0], state: d[1], sub: isPin ? ('PIN ' + d[2] + 'xxx · ' + d[1]) : (d[0] + ' District · ' + d[1]),
+      pop: 1.4 + this._rand(d[0]) * 3, isDist: true,
+    }));
+  }
+
+  _decorate(u, cap) {
+    const m = this._metrics(u.plain || u.name, u.isDist, cap);
+    const over = this.state.overrides[u.name];
+    const baseV = this._verdict(m.risk, m.conf);
+    const v = over || baseV;
+    const vm = this._vMeta(v);
+    const fac = u.isDist ? Math.round(3 + this._rand(u.name + 'f') * 22) : Math.round(38 + this._rand(u.name + 'f') * 540);
+    const strongPct = Math.max(0.04, Math.min(0.8, m.conf / 140 + this._rand(u.name+cap+'s') * 0.2));
+    const weakPct = Math.max(0.06, (1 - m.conf / 110) * 0.5);
+    const partPct = Math.max(0.05, 1 - strongPct - weakPct);
+    const strong = Math.round(fac * strongPct), weak = Math.round(fac * weakPct);
+    const partial = Math.max(0, fac - strong - weak);
+    const capObj = this.CAPS.find(c => c.id === cap);
+    const ev = this._evidence(u, cap, capObj, m.conf);
+    return {
+      ...u, risk: m.risk, conf: m.conf, verdict: v, baseVerdict: baseV, vm,
+      overridden: !!over, fac, strong, partial, weak,
+      riskColor: this._riskColor(m.risk), evidence: ev, capLabel: capObj.label,
+      watched: this.state.watch.includes(u.name), hasNote: !!(this.state.notes[u.name] && this.state.notes[u.name].trim()),
+      priority: m.risk * (v === 'desert' ? 2.1 : v === 'blind' ? 1.5 : v === 'served' ? 0.7 : 1.0),
+    };
+  }
+
+  _evidence(u, cap, capObj, conf) {
+    const place = u.plain || u.name.replace(/^\d+xxx · /, '');
+    const out = [];
+    const n = 3;
+    for (let i = 0; i < n; i++) {
+      const kind = this.FAC_KINDS[this._hash(u.name + cap + i) % this.FAC_KINDS.length];
+      const quote = capObj.quotes[i % capObj.quotes.length];
+      const roll = this._rand(u.name + cap + 'tag' + i) * 100;
+      let tag, tagColor, tagBg, tagInk;
+      const thr = conf;
+      if (roll < thr * 0.55) { tag = 'STRONG'; tagColor = '#2f9e6b'; tagBg = '#e8f5ee'; tagInk = '#1f7a50'; }
+      else if (roll < thr * 0.55 + 35) { tag = 'PARTIAL'; tagColor = '#e0a32b'; tagBg = '#fcf3e3'; tagInk = '#a9781a'; }
+      else { tag = 'WEAK'; tagColor = '#9aa0ad'; tagBg = '#f1f2f5'; tagInk = 'var(--muted)'; }
+      out.push({
+        facility: place + ' ' + kind,
+        quote: '“' + quote + '”',
+        tag, tagColor, tagBg, tagInk,
+        source: 'rec_' + (this._hash(u.name + cap + i) % 9000 + 1000) + ' · ' + capObj.label.toLowerCase() + '/' + (tag === 'WEAK' ? 'description' : 'capability'),
+      });
+    }
+    out.sort((a, b) => ({ STRONG: 0, PARTIAL: 1, WEAK: 2 })[a.tag] - ({ STRONG: 0, PARTIAL: 1, WEAK: 2 })[b.tag]);
+    return out;
+  }
+
+  _allDecorated() {
+    return this._units().map(u => this._decorate(u, this.state.cap));
+  }
+
+  // ---------- map ----------
+  componentDidMount() {
+    this._applyThemeAttr(this.state.theme);
+    this._loadMap();
+  }
+  componentDidUpdate() {
+    const S = this.state;
+    const snap = this._last || {};
+    const repaint = snap.cap !== S.cap || snap.overlay !== S.overlay || snap.sel !== S.sel ||
+      snap.focusedState !== S.focusedState || snap.overrides !== S.overrides || snap.grain !== S.grain;
+    if (repaint) this._paintMap();
+    if (snap.tab !== S.tab && S.tab === 'map' && this._drawn) requestAnimationFrame(() => this._paintMap());
+    this._last = { cap: S.cap, overlay: S.overlay, sel: S.sel, focusedState: S.focusedState, overrides: S.overrides, grain: S.grain, tab: S.tab };
+  }
+
+  async _loadMap() {
+    let tries = 0;
+    while ((!window.d3 || !document.getElementById('mdp-map-host')) && tries < 80) { await new Promise(r => setTimeout(r, 80)); tries++; }
+    this.mapEl = document.getElementById('mdp-map-host');
+    if (!window.d3 || !window.topojson || !this.mapEl) { this.setState({ mapLoading: false, mapError: true }); return; }
+    const urls = [
+      'https://cdn.jsdelivr.net/gh/udit-001/india-maps-data@main/geojson/india.geojson',
+      'https://raw.githubusercontent.com/udit-001/india-maps-data/main/geojson/india.geojson',
+    ];
+    let geo = null;
+    for (const url of urls) {
+      try {
+        const r = await fetch(url); if (!r.ok) continue;
+        const j = await r.json();
+        geo = j.objects ? window.topojson.feature(j, j.objects[Object.keys(j.objects)[0]]) : j;
+        if (geo && geo.features && geo.features.length) break;
+      } catch (e) { geo = null; }
+    }
+    if (!geo) { this.setState({ mapLoading: false, mapError: true }); return; }
+    this._geo = geo;
+    this.setState({ mapLoading: false, mapError: false }, () => this._drawMap());
+  }
+
+  _stateName(p) { return (p && (p.st_nm || p.NAME_1 || p.state || p.STATE)) || ''; }
+  _distName(p) { return (p && (p.district || p.NAME_2 || p.dt_name)) || ''; }
+  // metric used to colour a feature, depending on grain
+  _featMetric(p, cap) {
+    const st = this._stateName(p);
+    if (this.state.grain === 'state') return this._metrics(st, false, cap);
+    return this._metrics(this._distName(p) || st, true, cap);
+  }
+
+  _drawMap() {
+    const el = this.mapEl; if (!el || !this._geo) return;
+    const d3 = window.d3;
+    el.innerHTML = '';
+    const w = el.clientWidth || 700, h = el.clientHeight || 500;
+    const svg = d3.select(el).append('svg').attr('width', w).attr('height', h).style('display', 'block');
+    const defs = svg.append('defs');
+    const hp = defs.append('pattern').attr('id', 'mdphatch').attr('width', 5).attr('height', 5).attr('patternUnits', 'userSpaceOnUse').attr('patternTransform', 'rotate(45)');
+    hp.append('rect').attr('width', 5).attr('height', 5).attr('fill', 'none');
+    hp.append('line').attr('x1', 0).attr('y1', 0).attr('x2', 0).attr('y2', 5).attr('stroke', 'rgba(255,255,255,.75)').attr('stroke-width', 2);
+    const proj = d3.geoMercator().fitExtent([[16, 12], [w - 16, h - 12]], this._geo);
+    const path = d3.geoPath(proj);
+    this._g = svg.append('g');
+    const self = this;
+    this._paths = this._g.selectAll('path').data(this._geo.features).enter().append('path')
+      .attr('d', path)
+      .attr('stroke', this._mc().stroke).attr('stroke-width', 0.35)
+      .style('cursor', 'pointer')
+      .on('mousemove', function (ev, d) { self._tip(ev, d.properties); })
+      .on('mouseleave', function () { self._hideTip(); self._paintMap(); })
+      .on('mouseenter', function () { d3.select(this).attr('stroke', this._mc().focus).attr('stroke-width', 1.3).raise(); })
+      .on('click', function (ev, d) { self._onMapClick(d.properties); });
+    this._hatch = this._g.selectAll('path.hatch').data(this._geo.features).enter().append('path')
+      .attr('class', 'hatch').attr('d', path).attr('fill', 'url(#mdphatch)').attr('pointer-events', 'none').attr('opacity', 0);
+    this._drawn = true;
+    this._paintMap();
+  }
+
+  _paintMap() {
+    if (!this._paths) return;
+    const self = this;
+    const cap = this.state.cap, overlay = this.state.overlay;
+    const focus = (p) => {
+      const st = self._stateName(p);
+      return self.state.focusedState === st || (self.state.sel && self.state.sel.state === st);
+    };
+    this._paths.attr('fill', d => self._riskColor(self._featMetric(d.properties, cap).risk))
+      .attr('stroke', d => focus(d.properties) ? this._mc().focus : this._mc().stroke)
+      .attr('stroke-width', d => focus(d.properties) ? 0.9 : 0.35)
+      .attr('fill-opacity', d => (self.state.focusedState && !focus(d.properties)) ? 0.4 : 1);
+    this._hatch.attr('opacity', function (d) {
+      if (!overlay) return 0;
+      const m = self._featMetric(d.properties, cap);
+      return m.conf < 55 ? Math.min(0.85, (55 - m.conf) / 45 + 0.3) : 0;
+    });
+  }
+
+  _tip(ev, p) {
+    const st = this._stateName(p), dist = this._distName(p);
+    if (!st) return;
+    let tip = this._tipEl;
+    if (!tip) {
+      tip = document.createElement('div');
+      tip.style.cssText = 'position:fixed; pointer-events:none; z-index:99; background:#14161d; color:var(--solid-ink)fff; padding:8px 11px; border-radius:9px; font-family:Hanken Grotesk,sans-serif; font-size:12px; box-shadow:0 10px 28px rgba(0,0,0,.4); transform:translate(-50%,-118%); white-space:nowrap;';
+      document.body.appendChild(tip); this._tipEl = tip;
+    }
+    const m = this._featMetric(p, this.state.cap);
+    const v = this._vMeta(this._verdict(m.risk, m.conf));
+    const title = this.state.grain === 'state' ? st : (dist + ' · ' + st);
+    tip.innerHTML = `<div style="font-weight:700;margin-bottom:2px">${title}</div><div style="font-family:IBM Plex Mono,monospace;font-size:10px;color:#9aa3b4">RISK ${m.risk} · CONF ${m.conf} · <span style="color:${v.color}">${v.label}</span></div>`;
+    tip.style.left = ev.clientX + 'px'; tip.style.top = ev.clientY + 'px'; tip.style.display = 'block';
+  }
+  _hideTip() { if (this._tipEl) this._tipEl.style.display = 'none'; }
+
+  _onMapClick(p) {
+    const st = this._stateName(p), dist = this._distName(p);
+    if (!st) return;
+    if (this.state.grain === 'state') {
+      const u = { name: st, state: st, sub: 'State', pop: this.POP[st] || 20, isDist: false };
+      this.setState({ sel: this._decorate(u, this.state.cap), focusedState: st });
+    } else {
+      const u = { name: dist, plain: dist, state: st, sub: dist + ' District · ' + st, pop: 2, isDist: true };
+      this.setState({ sel: this._decorate(u, this.state.cap), focusedState: st });
+    }
+  }
+
+  // ---------- actions ----------
+  _selectUnit = (u) => { this.setState({ sel: this._decorate(u, this.state.cap), focusedState: u.state }); };
+  _selectByName = (name) => {
+    const u = this._units().find(x => x.name === name);
+    if (u) this._selectUnit(u);
+  };
+  _toggleWatch = (name) => {
+    const w = this.state.watch.includes(name) ? this.state.watch.filter(x => x !== name) : [...this.state.watch, name];
+    this.setState({ watch: w }, this._save);
+  };
+  _setNote = (name, val) => {
+    const notes = { ...this.state.notes, [name]: val };
+    this.setState({ notes }, this._save);
+  };
+  _setOverride = (name, v) => {
+    const overrides = { ...this.state.overrides };
+    if (v === null) delete overrides[name]; else overrides[name] = v;
+    this.setState({ overrides }, () => { this._save(); if (this.state.sel && this.state.sel.name === name) this._selectByName(name); });
+  };
+  _saveScenario = () => {
+    const nm = (this.state.newScenario || '').trim(); if (!nm) return;
+    const sc = { name: nm, cap: this.state.cap, grain: this.state.grain, overlay: this.state.overlay, sort: this.state.sort };
+    this.setState({ scenarios: [...this.state.scenarios.filter(s => s.name !== nm), sc], newScenario: '', scenarioName: nm }, this._save);
+  };
+  _applyScenario = (sc) => { this.setState({ cap: sc.cap, grain: sc.grain, overlay: sc.overlay, sort: sc.sort, scenarioName: sc.name, sel: null, showScenarios: false }, this._save); };
+  _deleteScenario = (nm) => { this.setState({ scenarios: this.state.scenarios.filter(s => s.name !== nm) }, this._save); };
+
+  // ---------- render ----------
+  renderVals() {
+    const S = this.state;
+    const all = this._allDecorated();
+    const capObj = this.CAPS.find(c => c.id === S.cap);
+
+    // summary over all units of current grain
+    const counts = { desert: 0, blind: 0, served: 0, unknown: 0 };
+    all.forEach(u => counts[u.verdict]++);
+    const total = all.length || 1;
+    const summary = [
+      { key: 'desert', label: 'Confirmed deserts', color: '#d23f2d' },
+      { key: 'blind', label: 'Blind spots', color: '#e0a32b' },
+      { key: 'served', label: 'Adequately served', color: '#2f9e6b' },
+      { key: 'unknown', label: 'Unverified', color: '#9aa0ad' },
+    ].map(s => ({ ...s, count: counts[s.key], pct: Math.round(counts[s.key] / total * 100) + '%' }));
+
+    // capability chips
+    const capActiveStyle = (a) => `display:flex; align-items:center; justify-content:space-between; width:100%; padding:9px 11px; border-radius:9px; cursor:pointer; text-align:left; font-family:'Hanken Grotesk',sans-serif; border:1px solid ${a ? 'var(--accent-border)' : 'transparent'}; background:${a ? 'var(--accent-soft)' : 'transparent'}; color:${a ? 'var(--accent-ink)' : 'var(--ink-2)'};`;
+    const capDots = { icu:'#d23f2d', maternity:'#7c4dd6', emergency:'#e0732b', oncology:'#2f9e6b', trauma:'#d6452f', nicu:'#3d8bd6', dialysis:'#1f9e9e' };
+    const capabilities = this.CAPS.map(c => ({ label: c.label, cov: c.cov, dot: capDots[c.id], style: capActiveStyle(S.cap === c.id), onClick: () => this.setState({ cap: c.id, sel: null }) }));
+
+    // grain
+    const grainBtn = (a) => `flex:1; padding:7px 0; border:none; border-radius:7px; cursor:pointer; font-family:'Hanken Grotesk',sans-serif; font-size:12px; font-weight:600; background:${a ? 'var(--panel)' : 'transparent'}; color:${a ? 'var(--ink)' : 'var(--faint)'}; box-shadow:${a ? '0 1px 2px rgba(0,0,0,.08)' : 'none'};`;
+    const grains = [['state','State'],['district','District'],['pin','PIN']].map(([id, label]) => ({ label, style: grainBtn(S.grain === id), onClick: () => this.setState({ grain: id, sel: null, focusedState: null }) }));
+
+    // tabs
+    const tabBtn = (a) => `padding:6px 16px; border:none; border-radius:7px; cursor:pointer; font-family:'Hanken Grotesk',sans-serif; font-size:12.5px; font-weight:600; background:${a ? 'var(--solid)' : 'transparent'}; color:${a ? 'var(--panel)' : 'var(--muted)'};`;
+    const tabs = [['map','Map'],['quad','Risk × Confidence']].map(([id, label]) => ({ label, style: tabBtn(S.tab === id), onClick: () => this.setState({ tab: id }) }));
+
+    // legend
+    const legend = [
+      { title: 'Confirmed desert', desc: 'High risk · strong evidence', color: '#d23f2d', hatch: 'none' },
+      { title: 'Blind spot', desc: 'High risk · thin data — verify', color: '#e0a32b', hatch: this._hatchCss(true) },
+      { title: 'Adequately served', desc: 'Low risk · well evidenced', color: '#2f9e6b', hatch: 'none' },
+      { title: 'Unverified', desc: 'Low signal both axes', color: '#cfd3db', hatch: this._hatchCss(true) },
+    ];
+
+    // ranked list
+    let ranked = all;
+    if (S.focusedState && S.grain !== 'state') ranked = ranked.filter(u => u.state === S.focusedState);
+    if (S.query.trim()) { const q = S.query.toLowerCase(); ranked = ranked.filter(u => (u.name + ' ' + u.sub + ' ' + u.state).toLowerCase().includes(q)); }
+    const sortFns = {
+      priority: (a, b) => b.priority - a.priority,
+      risk: (a, b) => b.risk - a.risk,
+      conf: (a, b) => a.conf - b.conf,
+      az: (a, b) => a.name.localeCompare(b.name),
+    };
+    ranked = [...ranked].sort(sortFns[S.sort]);
+    const rankedView = ranked.map((u, i) => ({
+      rank: String(i + 1).padStart(2, '0'), name: u.name, sub: u.sub, risk: u.risk, conf: u.conf,
+      riskColor: u.riskColor, verdictColor: u.vm.color, hatch: (u.verdict === 'blind' || u.verdict === 'unknown') ? this._hatchCss(true) : 'none',
+      watched: u.watched, hasNote: u.hasNote,
+      bg: (S.sel && S.sel.name === u.name) ? '#f4f5ff' : 'transparent',
+      border: (S.sel && S.sel.name === u.name) ? 'var(--accent-border)' : 'transparent',
+      onClick: () => this._selectUnit(u),
+    }));
+    const sortBtn = (a) => `padding:5px 11px; border-radius:8px; border:1px solid ${a ? 'var(--accent-border)' : 'var(--border-3)'}; background:${a ? 'var(--accent-soft)' : 'var(--panel)'}; color:${a ? 'var(--accent)' : 'var(--faint)'}; font-family:'Hanken Grotesk',sans-serif; font-size:11.5px; font-weight:600; cursor:pointer;`;
+    const sorts = [['priority','Priority'],['risk','Risk'],['conf','Low conf'],['az','A–Z']].map(([id, label]) => ({ label, style: sortBtn(S.sort === id), onClick: () => this.setState({ sort: id }) }));
+
+    // quadrant dots
+    const padL = 56, padR = 26, padT = 30, padB = 40;
+    const innerW = this.qW - padL - padR, innerH = this.qH - padT - padB;
+    const sx = (c) => padL + (c / 100) * innerW;
+    const sy = (r) => padT + (1 - r / 100) * innerH;
+    const qDots = all.map(u => ({
+      cx: +sx(u.conf).toFixed(1), cy: +sy(u.risk).toFixed(1),
+      r: u.isDist ? 6 : Math.max(6, Math.min(20, Math.sqrt(u.pop) * 1.7)),
+      fill: u.vm.color, stroke: (S.sel && S.sel.name === u.name) ? '#1b1d26' : 'var(--panel)',
+      sw: (S.sel && S.sel.name === u.name) ? 2.4 : 1.2,
+      onClick: () => this._selectUnit(u),
+    }));
+    // labels for watched or top-priority
+    const topNames = new Set([...all].sort((a,b)=>b.priority-a.priority).slice(0, 5).map(u => u.name));
+    const qLabels = all.filter(u => u.watched || topNames.has(u.name)).slice(0, 8).map(u => ({
+      name: u.name.length > 16 ? u.name.slice(0, 15) + '…' : u.name, x: +(sx(u.conf) + 9).toFixed(1), y: +(sy(u.risk) + 3).toFixed(1),
+    }));
+
+    // selected detail
+    let sel = null;
+    if (S.sel) {
+      const d = this._decorate(this._units().find(u => u.name === S.sel.name) || S.sel, S.cap);
+      const tot = d.fac || 1;
+      const ovBtn = (v, active) => `padding:8px 0; border-radius:9px; cursor:pointer; font-family:'Hanken Grotesk',sans-serif; font-size:12px; font-weight:600; border:1px solid ${active ? this._vMeta(v).color : 'var(--border-2)'}; background:${active ? this._vMeta(v).bg : 'var(--panel)'}; color:${active ? this._vMeta(v).ink : 'var(--muted)'};`;
+      sel = {
+        name: d.name, sub: d.sub, risk: d.risk, conf: d.conf,
+        riskColor: d.riskColor, riskW: d.risk + '%', confW: d.conf + '%',
+        verdictLabel: d.vm.label, verdictColor: d.vm.color, verdictInk: d.vm.ink, verdictBg: d.vm.bg, overridden: d.overridden,
+        capLabel: d.capLabel, facCount: d.fac, strong: d.strong, partial: d.partial, weak: d.weak,
+        strongFlex: Math.max(0.04, d.strong / tot), partialFlex: Math.max(0.04, d.partial / tot), weakFlex: Math.max(0.04, d.weak / tot),
+        evidence: d.evidence, note: S.notes[d.name] || '',
+        watched: d.watched, watchLabel: d.watched ? '★ Remove from watchlist' : '☆ Add to watchlist',
+        watchStyle: `flex:1; height:40px; border-radius:11px; cursor:pointer; font-family:'Hanken Grotesk',sans-serif; font-size:13px; font-weight:600; border:1px solid ${d.watched ? 'var(--accent-border)' : 'var(--border-2)'}; background:${d.watched ? 'var(--accent-soft)' : 'var(--panel)'}; color:${d.watched ? 'var(--accent)' : 'var(--ink-2)'};`,
+        onWatch: () => this._toggleWatch(d.name),
+        overrideOpts: [['desert','Confirmed desert'],['blind','Blind spot'],['served','Adequately served'],['unknown','Unverified']].map(([v, label]) => ({ label, style: ovBtn(v, d.verdict === v), onClick: () => this._setOverride(d.name, d.verdict === v ? null : v) })),
+      };
+    }
+
+    // export
+    const watchDecor = this.STATES.concat([]).length ? S.watch.map(name => {
+      const u = this._units().find(x => x.name === name) || { name, state: name, sub: '', pop: 20, isDist: this.state.grain !== 'state' };
+      const d = this._decorate(u, S.cap);
+      const action = d.verdict === 'desert' ? 'Prioritise capacity build-out; evidence is strong and risk is high.'
+        : d.verdict === 'blind' ? 'Commission a field verification — risk is high but evidence is thin.'
+        : d.verdict === 'served' ? 'Maintain; monitor for regression in coverage.'
+        : 'Improve data capture before drawing any planning conclusion.';
+      return { name: d.name, sub: d.sub, risk: d.risk, conf: d.conf, verdictLabel: d.vm.label, verdictColor: d.vm.color, action, note: S.notes[name] || '' };
+    }) : [];
+
+    // scenarios
+    const scenarioList = S.scenarios.map(sc => ({
+      name: sc.name, desc: `${this.CAPS.find(c=>c.id===sc.cap)?.label || sc.cap} · ${sc.grain} · ${sc.overlay ? 'overlay on' : 'overlay off'}`,
+      onApply: () => this._applyScenario(sc), onDelete: () => this._deleteScenario(sc.name),
+    }));
+
+    const grainLabel = S.grain === 'state' ? 'states' : S.grain === 'district' ? 'districts' : 'PIN zones';
+
+    return {
+      // top
+      query: S.query, setQuery: (e) => this.setState({ query: e.target.value }),
+      scenarioName: S.scenarioName, watchCount: S.watch.length, capLabel: capObj.label,
+      openExport: () => this.setState({ showExport: true }), openScenarios: () => this.setState({ showScenarios: true }),
+      // theme
+      theme: S.theme, setLight: () => this.setTheme('light'), setDark: () => this.setTheme('dark'),
+      lightBtnStyle: this._segBtn(S.theme !== 'dark'), darkBtnStyle: this._segBtn(S.theme === 'dark'),
+      // left
+      capabilities, grains, legend,
+      overlayTrack: S.overlay ? 'var(--accent)' : 'var(--track-off)', overlayKnob: S.overlay ? '17px' : '2px', toggleOverlay: () => this.setState({ overlay: !S.overlay }),
+      // center
+      summary, tabs,
+      centerTitle: S.tab === 'map' ? `Care-gap risk · ${capObj.label}` : `Risk vs. evidence · ${capObj.label}`,
+      centerSub: `${all.length} ${grainLabel} · overlay ${S.overlay ? 'ON' : 'OFF'}`,
+      mapDisplay: S.tab === 'map' ? 'block' : 'none', quadDisplay: S.tab === 'quad' ? 'block' : 'none',
+      mapRef: this._setMapEl, mapLoading: S.mapLoading, mapError: S.mapError,
+      // quadrant geometry
+      qW: this.qW, qH: this.qH, qMidX: +sx(58).toFixed(1), qMidY: +sy(58).toFixed(1),
+      qHalfW: +(this.qW - sx(58)).toFixed(1), qHalfH: +(this.qH - sy(58)).toFixed(1),
+      qLabRX: this.qW - 14, qBotY: this.qH - 14, qAxisY: this.qH - 2,
+      qDots, qLabels,
+      // right
+      showList: !S.sel, sel,
+      ranked: rankedView, rankTitle: S.focusedState && S.grain !== 'state' ? S.focusedState : 'Ranked ' + grainLabel,
+      rankCount: rankedView.length + ' shown', sorts,
+      focusedState: S.grain !== 'state' ? S.focusedState : null, clearFocus: () => this.setState({ focusedState: null }),
+      clearSel: () => this.setState({ sel: null }), clearOverride: () => sel && this._setOverride(sel.name, null),
+      saveNote: (e) => sel && this._setNote(sel.name, e.target.value),
+      // modals
+      showExport: S.showExport, showScenarios: S.showScenarios, closeModals: () => this.setState({ showExport: false, showScenarios: false }), stop: (e) => e.stopPropagation(),
+      hasWatch: S.watch.length > 0, noWatch: S.watch.length === 0, exportRegions: watchDecor, printPlan: () => window.print(),
+      newScenario: S.newScenario, setNewScenario: (e) => this.setState({ newScenario: e.target.value }), saveScenario: this._saveScenario,
+      scenarioList, noScenarios: scenarioList.length === 0,
+    };
+  }
+}
+Component.prototype._setMapEl = function (el) { this.mapEl = el; };
+</script>
+</body>
+</html>

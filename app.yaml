@@ -1,0 +1,33 @@
+command:
+  - uvicorn
+  - app.backend.main:app
+  - --host
+  - "0.0.0.0"
+  - --port
+  - "8000"
+
+env:
+  - name: GOLD_CATALOG
+    value: "main"
+  - name: GOLD_SCHEMA
+    value: "carelense_gold"
+  - name: FACILITY_CATALOG
+    value: "databricks_virtue_foundation_dataset_dais_2026"
+  - name: FACILITY_SCHEMA
+    value: "virtue_foundation_dataset"
+  - name: FACILITY_TABLE
+    value: "facilities"
+  - name: FRONTEND_DIR
+    value: "app/frontend/out"
+  - name: DATABRICKS_WAREHOUSE_ID
+    valueFrom: sql-warehouse
+  - name: OPENAI_BASE_URL
+    value: "https://api.openai.com/v1"
+  - name: GENIE_SPACE_ID
+    value: "01f1690e21db1857bf0da7b45a35d4b4"
+  # Optional — set in Apps → Environment → Secrets (or uncomment valueFrom after creating secrets):
+  # - name: OPENAI_API_KEY
+  #   valueFrom: openai-api-key
+  # - name: AGENT_ENDPOINT
+  #   valueFrom: agent-endpoint
+  # Lakebase — attach a database resource named "postgres" in Apps → Resources; PGHOST is injected automatically.
