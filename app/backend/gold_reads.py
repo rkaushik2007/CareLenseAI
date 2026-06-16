@@ -153,17 +153,22 @@ def _source_table() -> str:
 
 
 def get_capabilities() -> list[dict[str, Any]]:
-    """Coverage = share of India facilities with ≥1 matched claim."""
-    from pipeline.scoring_core import assess_tier
+    """Coverage = share of geo units with facility evidence for this capability.
 
-    rows = _query(f"SELECT * FROM {_source_table()} LIMIT 12000")
-    total = len(rows) or 1
-    out = []
-    for cap in CAPABILITIES:
-        cap_id = cap["id"]
-        matched = sum(1 for r in rows if assess_tier(r, cap_id)[0] != "none")
-        out.append({**cap, "coverage": round(matched / total, 2)})
-    return out
+    At state grain: fraction of state units where n_facilities > 0.
+    """
+    rows = _query(
+        f"SELECT capability, "
+        f"AVG(CASE WHEN n_facilities > 0 THEN 1.0 ELSE 0.0 END) AS coverage "
+        f"FROM {_gold_table('gold_geo_capability')} "
+        f"WHERE grain = 'state' "
+        f"GROUP BY capability"
+    )
+    by_cap = {r["capability"]: float(r["coverage"]) for r in rows}
+    return [
+        {**cap, "coverage": round(by_cap.get(cap["id"], 0.0), 2)}
+        for cap in CAPABILITIES
+    ]
 
 
 def get_units(cap: str, grain: str) -> list[dict[str, Any]]:

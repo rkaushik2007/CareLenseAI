@@ -91,6 +91,7 @@ function Logo() {
 
 export default function Dashboard() {
   const [capabilities, setCapabilities] = useState<Capability[]>([]);
+  const [capabilitiesError, setCapabilitiesError] = useState(false);
   const [cap, setCap] = useState("icu");
   const [grain, setGrain] = useState<Grain>("state");
   const [overlay, setOverlay] = useState(true);
@@ -129,8 +130,14 @@ export default function Dashboard() {
 
   useEffect(() => {
     fetchCapabilities()
-      .then(setCapabilities)
-      .catch(() => setCapabilities([]));
+      .then((caps) => {
+        setCapabilities(caps);
+        setCapabilitiesError(false);
+      })
+      .catch(() => {
+        setCapabilities([]);
+        setCapabilitiesError(true);
+      });
     loadScenarios();
   }, [loadScenarios]);
 
@@ -491,16 +498,27 @@ export default function Dashboard() {
                 fontWeight: 600,
                 color: "var(--faint)",
                 letterSpacing: "0.08em",
-                marginBottom: 11,
+                marginBottom: capabilitiesError ? 4 : 11,
               }}
             >
               CAPABILITY
             </div>
+            {capabilitiesError ? (
+              <div
+                style={{
+                  fontSize: 9,
+                  color: "var(--warn, #c47a00)",
+                  marginBottom: 8,
+                  lineHeight: 1.3,
+                }}
+              >
+                Coverage unavailable
+              </div>
+            ) : null}
             <div style={{ display: "flex", flexDirection: "column", gap: 5 }}>
               {(capabilities.length ? capabilities : Object.keys(CAP_DOTS).map((id) => ({
                 id,
                 label: id,
-                coverage: 0,
                 dot: CAP_DOTS[id],
               }))).map((c) => (
                 <button
@@ -524,7 +542,7 @@ export default function Dashboard() {
                     <span style={{ fontSize: 13, fontWeight: 600 }}>{c.label}</span>
                   </span>
                   <span className="mdp-mono" style={{ fontSize: 10, opacity: 0.6 }}>
-                    {c.coverage.toFixed(2)}
+                    {capabilitiesError || c.coverage == null ? "—" : c.coverage.toFixed(2)}
                   </span>
                 </button>
               ))}

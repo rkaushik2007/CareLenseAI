@@ -101,6 +101,11 @@ def api_health_data():
     except Exception as exc:
         out["status"] = "error"
         out["error"] = str(exc)
+    try:
+        caps = gold_reads.get_capabilities()
+        out["capabilities"] = {c["id"]: c["coverage"] for c in caps}
+    except Exception as exc:
+        out["capabilities_error"] = str(exc)
     return out
 
 
