@@ -90,6 +90,48 @@ Open <http://localhost:8000> for the UI and <http://localhost:8000/api/health> f
 
 Gold tables must live in catalog **`main`** (`GOLD_CATALOG=main` in `app.yaml` and pipeline config).
 
+### Try it in your own workspace — credentials & where they go
+
+You need exactly **one Databricks workspace** (the hackathon free tier works) and **one Personal Access Token (PAT)**. The same `dapi…` token is reused everywhere a credential is required.
+
+**Get a PAT:** in your workspace, top‑right **avatar → Settings → Developer → Access tokens → Generate new token**. Copy the `dapi…` value — it is shown only once.
+
+**Get your SQL warehouse ID:** **SQL → SQL Warehouses →** open (or create a Serverless) warehouse **→** copy the ID from the URL or the *Connection details* tab.
+
+> ⚠️ The app reads credentials from the **process environment** — it does **not** auto‑load `.env`. Either `export` the variables in your shell, or (for deploys) put them in `deploy.config.yaml`. Never paste a literal token into a tracked file.
+
+| Credential | What it is | Local run | Deployed Databricks App |
+| --- | --- | --- | --- |
+| `DATABRICKS_HOST` | Workspace URL, e.g. `https://YOUR-WS.cloud.databricks.com` | shell env var | not needed (app knows its own host) |
+| `DATABRICKS_TOKEN` | the `dapi…` PAT | shell env var | **not stored in the app** — runtime uses auto‑injected OAuth; the PAT is only used by the deploy script to upload |
+| `DATABRICKS_WAREHOUSE_ID` | SQL warehouse ID | shell env var | auto‑injected via `valueFrom: sql-warehouse` in `app.yaml` |
+| `GOLD_CATALOG` / `GOLD_SCHEMA` | where gold tables live (`main` / `carelense_gold`) | shell env (defaults shown) | set in `app.yaml` |
+| `FACILITY_CATALOG` / `FACILITY_SCHEMA` / `FACILITY_TABLE` | source dataset from Marketplace | shell env (defaults in `.env.example`) | set in `app.yaml` |
+
+**Run locally against your workspace** (reads live gold tables; scenario‑saving falls back to local SQLite if no Lakebase):
+
+```
+# macOS / Linux
+export DATABRICKS_HOST=https://YOUR-WORKSPACE.cloud.databricks.com
+export DATABRICKS_TOKEN=dapiXXXXXXXXXXXXXXXX        # the PAT you generated
+export DATABRICKS_WAREHOUSE_ID=xxxxxxxxxxxxxxxx     # your warehouse ID
+export GOLD_CATALOG=main
+uvicorn app.backend.main:app --reload --port 8000
+
+# Windows PowerShell
+$env:DATABRICKS_HOST="https://YOUR-WORKSPACE.cloud.databricks.com"
+$env:DATABRICKS_TOKEN="dapiXXXXXXXXXXXXXXXX"
+$env:DATABRICKS_WAREHOUSE_ID="xxxxxxxxxxxxxxxx"
+$env:GOLD_CATALOG="main"
+uvicorn app.backend.main:app --reload --port 8000
+```
+
+`.env.example` lists every variable. Copy it to `.env` for reference, but remember the app won't read `.env` on its own — source it (`export $(grep -v '^#' .env | xargs)`) or set the vars as above.
+
+**Deploy the app to your workspace:** copy `deploy.config.example.yaml` → `deploy.config.yaml` (gitignored) and fill in `databricks_host`, `warehouse_id`, `workspace_base`, and `app_name`. Leave the token as `databricks_token: ${DATABRICKS_TOKEN}` and `export DATABRICKS_TOKEN` in your shell — **never paste the literal token** into the file. Then run `python scripts/deploy_infrastructure.py`. The deployed app authenticates via **OAuth** (injected by Databricks Apps) and gets the warehouse via `valueFrom: sql-warehouse`, so the PAT never lives inside the running app.
+
+> 🔒 **Never commit your token.** `.env`, `deploy.config.yaml`, and `scripts/_*.py` are already in `.gitignore`. If a token leaks, revoke it on the same **Access tokens** page and generate a new one.
+
 ### 1. Prerequisites
 
 ```
